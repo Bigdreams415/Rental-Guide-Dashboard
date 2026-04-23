@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  /* Brand colors - preserved exactly */
+  --color-primary: #008753;
+  --color-primary-light: #34A87C;
+  --color-primary-dark: #006B42;
+  --color-secondary: #F57C00;
+  --color-secondary-light: #FFA726;
+  --color-secondary-dark: #EF6C00;
+  --color-accent: #2196F3;
+  --color-success: #4CAF50;
+  --color-warning: #FFC107;
+  --color-error: #F44336;
+  --color-background: #FAFAFA;
+  --color-surface: #FFFFFF;
+  --color-grey: #9E9E9E;
+  --color-grey-light: #E0E0E0;
+  --color-grey-dark: #424242;
+  --color-text-primary: #212121;
+  --color-text-secondary: #757575;
+
+  /* Enhanced shadows */
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.02);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.05), 0 10px 10px -5px rgba(0,0,0,0.02);
+  --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.1);
+  
+  /* Custom animations */
+  --animate-slide-in: slide-in 0.2s ease-out;
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-scale: scale 0.15s ease-out;
+  
+  @keyframes slide-in {
+    from { transform: translateX(-10px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes scale {
+    from { transform: scale(0.98); }
+    to { transform: scale(1); }
+  }
+}
+
+@layer base {
+  body {
+    background-color: #FAFAFA;
+    color: #212121;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    @apply border-grey-light;
+  }
+}
+
+@layer components {
+  /* Card styles */
+  .card {
+    @apply bg-surface rounded-2xl border border-grey-light/50 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+  
+  .card-hover {
+    @apply hover:shadow-lg hover:border-grey-light/80 hover:-translate-y-0.5;
+  }
+  
+  /* Stat card specific */
+  .stat-card {
+    @apply bg-surface rounded-xl border border-grey-light/50 p-5 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+  
+  /* Table row hover */
+  .table-row-hover {
+    @apply hover:bg-primary/5 transition-colors duration-150;
+  }
+  
+  /* Sidebar link */
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-text-secondary 
+           transition-all duration-200 hover:bg-primary/10 hover:text-primary;
+  }
+  
+  .sidebar-link.active {
+    @apply bg-primary/10 text-primary font-semibold shadow-sm;
+  }
+  
+  /* Badge base */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border;
+  }
+  
+  /* Button animations */
+  .btn-scale {
+    @apply active:scale-95 transition-transform duration-150;
+  }
+  
+  /* Gradient overlays */
+  .gradient-overlay {
+    background: linear-gradient(to top, rgba(0,0,0,0.1), transparent);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-grey-light) 0%,
+    var(--color-grey-light/80) 40%,
+    var(--color-grey-light) 60%,
+    var(--color-grey-light) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-grey-light);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-grey);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}

@@ -1,0 +1,87 @@
+import axios from "axios";
+import type { Property, PropertyFilters, AuthToken, LoginCredentials } from "../types/property";
+
+// ─── Axios instance ───────────────────────────────────────────────────────────
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1",
+  headers: { "Content-Type": "application/json" },
+});
+
+// Attach token on every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("admin_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Redirect to login on 401
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem("admin_token");
+      window.location.href = "/login";
+    }
+    return Promise.reject(err);
+  }
+);
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+export const authApi = {
+  login: async (creds: LoginCredentials): Promise<AuthToken> => {
+    // Admin-only endpoint — rejects users without admin_access capability
+    const form = new URLSearchParams();
+    form.append("username", creds.email);
+    form.append("password", creds.password);
+    const { data } = await api.post<AuthToken>("/admin/auth/token", form, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+    return data;
+  },
+};
+
+// ─── Properties ───────────────────────────────────────────────────────────────
+
+export const propertiesApi = {
+  // Public list (verified only unless show_pending=true)
+  list: async (filters: PropertyFilters = {}): Promise<Property[]> => {
+    const { data } = await api.get<Property[]>("/properties/", { params: filters });
+    return data;
+  },
+
+  // Admin: pending only
+  listPending: async (skip = 0, limit = 50): Promise<Property[]> => {
+    const { data } = await api.get<Property[]>("/properties/admin/pending", {
+      params: { skip, limit },
+    });
+    return data;
+  },
+
+  // Single property
+  get: async (id: string): Promise<Property> => {
+    const { data } = await api.get<Property>(`/properties/${id}`);
+    return data;
+  },
+
+  // Approve
+  approve: async (id: string, notes?: string): Promise<Property> => {
+    const { data } = await api.post<Property>(`/properties/admin/${id}/verify`, {
+      action: "approve",
+      notes: notes ?? null,
+    });
+    return data;
+  },
+
+  // Reject
+  reject: async (id: string, notes: string): Promise<Property> => {
+    const { data } = await api.post<Property>(`/properties/admin/${id}/verify`, {
+      action: "reject",
+      notes,
+    });
+    return data;
+  },
+};
+
+export default api;
