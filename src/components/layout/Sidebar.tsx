@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, ClockIcon,
   CheckCircle, XCircle, LogOut, ShieldCheck,
-  ChevronLeft, ChevronRight, Settings, HelpCircle
+  ChevronLeft, ChevronRight, Settings, HelpCircle, LifeBuoy
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useState } from "react";
@@ -13,6 +13,7 @@ const links = [
   { to: "/pending", icon: ClockIcon, label: "Pending Review" },
   { to: "/verified", icon: CheckCircle, label: "Verified" },
   { to: "/rejected", icon: XCircle, label: "Rejected" },
+  { to: "/tickets", icon: LifeBuoy, label: "Support Tickets" },
 ];
 
 const bottomLinks = [

@@ -110,7 +110,7 @@ export function Badge({ variant, label, dot = true, className, size = "md" }: Ba
   );
 }
 
-// ─── Helpers to convert backend enum values → badge props ─────────────────────
+// Helpers to convert backend enum values to badge props 
 
 export function verificationBadge(status: string): { variant: BadgeVariant; label: string } {
   const map: Record<string, { variant: BadgeVariant; label: string }> = {
@@ -128,6 +128,16 @@ export function statusBadge(status: string): { variant: BadgeVariant; label: str
     sold: { variant: "sold", label: "Sold" },
     rented: { variant: "rented", label: "Rented" },
     unavailable: { variant: "neutral", label: "Unavailable" },
+  };
+  return map[status] ?? { variant: "neutral", label: status };
+}
+
+export function ticketStatusBadge(status: string): { variant: BadgeVariant; label: string } {
+  const map: Record<string, { variant: BadgeVariant; label: string }> = {
+    open: { variant: "info", label: "Open" },
+    in_progress: { variant: "warning", label: "In Progress" },
+    resolved: { variant: "success", label: "Resolved" },
+    closed: { variant: "neutral", label: "Closed" },
   };
   return map[status] ?? { variant: "neutral", label: status };
 }

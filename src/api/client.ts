@@ -1,5 +1,6 @@
 import axios from "axios";
 import type { Property, PropertyFilters, AuthToken, LoginCredentials } from "../types/property";
+import type { Ticket, TicketListResponse } from "../types/ticket";
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 
@@ -80,6 +81,23 @@ export const propertiesApi = {
       action: "reject",
       notes,
     });
+    return data;
+  },
+};
+
+// ─── Support Tickets (Admin) ──────────────────────────────────────────────────
+
+export const ticketsApi = {
+  list: async (params: { status?: string; skip?: number; limit?: number } = {}) => {
+    const { data } = await api.get<TicketListResponse>("/admin/support/tickets", { params });
+    return data;
+  },
+  get: async (id: string): Promise<Ticket> => {
+    const { data } = await api.get<Ticket>(`/admin/support/tickets/${id}`);
+    return data;
+  },
+  update: async (id: string, body: { status?: string; admin_reply?: string }): Promise<Ticket> => {
+    const { data } = await api.patch<Ticket>(`/admin/support/tickets/${id}`, body);
     return data;
   },
 };
