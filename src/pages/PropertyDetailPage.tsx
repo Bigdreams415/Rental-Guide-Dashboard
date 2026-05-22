@@ -18,7 +18,7 @@ import { format } from "date-fns";
 import { clsx } from "clsx";
 import toast from "react-hot-toast";
 
-// ─── Approve / Reject Modal ────────────────────────────────────────────────────
+//  Approve / Reject Modal 
 
 function ActionModal({
   action, onConfirm, onCancel, loading,

@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { Property, PropertyFilters, AuthToken, LoginCredentials, AdminUser } from "../types/property";
 import type { Ticket, TicketListResponse } from "../types/ticket";
+import type { IdentityReviewItem } from "../types/identity";
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 
@@ -98,6 +99,51 @@ export const adminApi = {
     const base = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
     const filename = relativePath.split("/").pop() ?? relativePath;
     return `${base}/properties/${propertyId}/documents/${filename}`;
+  },
+};
+
+// ─── Identity Verification (Admin) ───────────────────────────────────────────
+
+export const identitiesApi = {
+  listPending: async (skip = 0, limit = 50): Promise<IdentityReviewItem[]> => {
+    const { data } = await api.get<IdentityReviewItem[]>("/admin/identity/pending", {
+      params: { skip, limit },
+    });
+    return data;
+  },
+
+  get: async (userId: string): Promise<IdentityReviewItem> => {
+    const { data } = await api.get<IdentityReviewItem>(`/admin/identity/${userId}`);
+    return data;
+  },
+
+  approve: async (userId: string, notes?: string): Promise<IdentityReviewItem> => {
+    const { data } = await api.post<IdentityReviewItem>(`/admin/identity/${userId}/review`, {
+      action: "approve",
+      notes: notes ?? null,
+    });
+    return data;
+  },
+
+  reject: async (userId: string, notes: string): Promise<IdentityReviewItem> => {
+    const { data } = await api.post<IdentityReviewItem>(`/admin/identity/${userId}/review`, {
+      action: "reject",
+      notes,
+    });
+    return data;
+  },
+
+  // Returns a full URL to stream the identity document (auth token auto-attached by axios interceptor)
+  documentUrl: (userId: string, relativePath: string): string => {
+    const base = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+    const filename = relativePath.split("/").pop() ?? relativePath;
+    return `${base}/identity/document/${userId}/${filename}`;
+  },
+
+  selfieUrl: (userId: string, relativePath: string): string => {
+    const base = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+    const filename = relativePath.split("/").pop() ?? relativePath;
+    return `${base}/identity/document/${userId}/${filename}`;
   },
 };
 

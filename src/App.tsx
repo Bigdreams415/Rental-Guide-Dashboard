@@ -7,6 +7,8 @@ import PropertiesPage from "./pages/PropertiesPage";
 import PropertyDetailPage from "./pages/PropertyDetailPage";
 import TicketsPage from "./pages/TicketsPage";
 import TicketDetailPage from "./pages/TicketDetailPage";
+import IdentitiesPage from "./pages/IdentitiesPage";
+import IdentityDetailPage from "./pages/IdentityDetailPage";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("admin_token");
@@ -96,6 +98,8 @@ export default function App() {
 
           <Route path="tickets" element={<TicketsPage />} />
           <Route path="tickets/:id" element={<TicketDetailPage />} />
+          <Route path="identities" element={<IdentitiesPage />} />
+          <Route path="identities/:id" element={<IdentityDetailPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
