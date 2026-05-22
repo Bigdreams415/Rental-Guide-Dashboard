@@ -7,13 +7,13 @@ import {
   Download, Share2,
   AlertCircle, Shield, FileCheck, History,
   ExternalLink, MessageCircle,
-  Star, User, Phone, Mail
+  Star, User, Phone, Mail, FileUp
 } from "lucide-react";
 import { TopBar } from "../components/layout/TopBar";
 import { Badge, verificationBadge, statusBadge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
-import { propertiesApi } from "../api/client";
-import type { Property, OwnershipDocument } from "../types/property";
+import { propertiesApi, adminApi } from "../api/client";
+import type { Property, OwnershipDocument, AdminUser } from "../types/property";
 import { format } from "date-fns";
 import { clsx } from "clsx";
 import toast from "react-hot-toast";
@@ -139,7 +139,7 @@ function ActionModal({
   );
 }
 
-// ─── Document Display with enhanced UI ─────────────────────────────────────────
+// Document Display with enhanced UI 
 
 const FIELD_LABELS: Record<string, string> = {
   document_type: "Document Type",
@@ -204,30 +204,65 @@ const FIELD_LABELS: Record<string, string> = {
   issued_by: "Issued By",
 };
 
-function DocumentCard({ doc }: { doc: OwnershipDocument }) {
+function DocumentCard({ doc, propertyId }: { doc: OwnershipDocument; propertyId: string }) {
   const [expanded, setExpanded] = useState(false);
-  const entries = Object.entries(doc).filter(([, v]) => v && String(v).trim());
-  const displayEntries = expanded ? entries : entries.slice(0, 4);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const fileUrls: string[] = Array.isArray(doc.file_urls) ? doc.file_urls : [];
+  const metaEntries = Object.entries(doc).filter(
+    ([k, v]) => k !== "document_type" && k !== "id" && k !== "file_urls" && v && String(v).trim()
+  );
+  const displayEntries = expanded ? metaEntries : metaEntries.slice(0, 4);
+
+  const hasFiles = fileUrls.length > 0;
 
   return (
-    <div className="bg-gradient-to-br from-background to-surface rounded-xl border border-grey-light/50 p-4 hover:shadow-md transition-all">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-            <FileCheck className="w-5 h-5 text-primary" />
+    <>
+      <div className="bg-gradient-to-br from-background to-surface rounded-xl border border-grey-light/50 p-4 hover:shadow-md transition-all">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+              <FileCheck className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-text-primary">{doc.document_type}</p>
+              {hasFiles && (
+                <p className="text-[10px] text-success flex items-center gap-1">
+                  <FileUp className="w-3 h-3" /> {fileUrls.length} file{fileUrls.length > 1 ? "s" : ""} uploaded
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-sm text-text-primary">{doc.document_type}</p>
-            <p className="text-[10px] text-text-secondary">Document ID: {doc.id?.slice(0, 8)}</p>
-          </div>
+          {hasFiles && <Badge variant="success" label="Files attached" dot={false} size="sm" />}
         </div>
-        <Badge variant="info" label="Verified" dot={false} size="sm" />
-      </div>
 
-      <dl className="grid grid-cols-1 gap-2">
-        {displayEntries
-          .filter(([k]) => k !== "document_type" && k !== "id")
-          .map(([key, val]) => (
+        {/* File list */}
+        {hasFiles && (
+          <div className="mb-3 space-y-1">
+            {fileUrls.map((relativePath, i) => {
+              const filename = relativePath.split("/").pop() ?? relativePath;
+              const isPdf = filename.toLowerCase().endsWith(".pdf");
+              const viewUrl = adminApi.documentUrl(propertyId, relativePath);
+              return (
+                <div key={i} className="flex items-center gap-2 bg-background rounded-lg px-3 py-2 text-xs">
+                  {isPdf
+                    ? <FileText className="w-4 h-4 text-error shrink-0" />
+                    : <ImageIcon className="w-4 h-4 text-primary shrink-0" />}
+                  <span className="flex-1 truncate text-text-primary">{filename}</span>
+                  <button
+                    onClick={() => setPreviewUrl(viewUrl)}
+                    className="text-primary hover:text-primary-dark font-medium"
+                  >
+                    View
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <dl className="grid grid-cols-1 gap-2">
+          {displayEntries.map(([key, val]) => (
             <div key={key} className="flex gap-2 items-start text-sm">
               <dt className="text-xs text-text-secondary w-32 shrink-0 pt-px">
                 {FIELD_LABELS[key] ?? key.replace(/_/g, " ")}:
@@ -235,22 +270,48 @@ function DocumentCard({ doc }: { doc: OwnershipDocument }) {
               <dd className="text-xs font-medium text-text-primary">{String(val)}</dd>
             </div>
           ))}
-      </dl>
+        </dl>
 
-      {entries.length > 5 && (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="mt-3 text-xs text-primary hover:text-primary-dark font-medium flex items-center gap-1"
+        {metaEntries.length > 4 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="mt-3 text-xs text-primary hover:text-primary-dark font-medium flex items-center gap-1"
+          >
+            {expanded ? "Show less" : `Show ${metaEntries.length - 4} more fields`}
+            <ChevronRight className={clsx("w-3 h-3 transition-transform", expanded && "rotate-90")} />
+          </button>
+        )}
+      </div>
+
+      {/* Preview modal */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setPreviewUrl(null)}
         >
-          {expanded ? "Show less" : `Show ${entries.length - 4} more fields`}
-          <ChevronRight className={clsx("w-3 h-3 transition-transform", expanded && "rotate-90")} />
-        </button>
+          <div
+            className="bg-surface rounded-xl overflow-hidden shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center px-4 py-3 border-b border-grey-light">
+              <p className="text-sm font-semibold text-text-primary truncate">{previewUrl.split("/").pop()}</p>
+              <button onClick={() => setPreviewUrl(null)} className="text-text-secondary hover:text-text-primary">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              {previewUrl.toLowerCase().includes(".pdf")
+                ? <iframe src={previewUrl} className="w-full h-full min-h-[60vh]" title="Document preview" />
+                : <img src={previewUrl} alt="Document" className="w-full object-contain max-h-[70vh]" />}
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
-// ─── Image Gallery with enhanced UI ────────────────────────────────────────────
+// Image Gallery with enhanced UI 
 
 function Gallery({ images }: { images: Property["images"] }) {
   const [idx, setIdx] = useState(0);
@@ -339,7 +400,7 @@ function Gallery({ images }: { images: Property["images"] }) {
   );
 }
 
-// ─── Spec Chip with enhanced UI ────────────────────────────────────────────────
+// Spec Chip with enhanced UI 
 
 function Spec({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | number }) {
   return (
@@ -355,7 +416,7 @@ function Spec({ icon: Icon, label, value }: { icon: React.ElementType; label: st
   );
 }
 
-// ─── Timeline Item ─────────────────────────────────────────────────────────────
+// Timeline Item
 
 function TimelineItem({
   icon: Icon,
@@ -399,12 +460,13 @@ function TimelineItem({
   );
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
+// Main Page
 
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [property, setProperty] = useState<Property | null>(null);
+  const [ownerInfo, setOwnerInfo] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<"approve" | "reject" | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -413,7 +475,13 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     if (!id) return;
     propertiesApi.get(id)
-      .then(setProperty)
+      .then((p) => {
+        setProperty(p);
+        // Fetch real owner info for the contact card
+        adminApi.getUser(p.owner_id)
+          .then(setOwnerInfo)
+          .catch(() => { /* non-fatal — contact card shows partial data */ });
+      })
       .catch(() => toast.error("Property not found"))
       .finally(() => setLoading(false));
   }, [id]);
@@ -747,32 +815,64 @@ export default function PropertyDetailPage() {
                   </dl>
                 </div>
 
-                {/* Contact info - if available */}
+                {/* Contact info — loaded from backend */}
                 <div className="card p-5">
-                  <h2 className="text-sm font-semibold text-text-primary mb-3">Contact Information</h2>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
-                      <User className="w-4 h-4 text-primary" />
-                      <div>
-                        <p className="text-xs text-text-secondary">Property Owner</p>
-                        <p className="text-sm font-medium text-text-primary">John Doe</p>
+                  <h2 className="text-sm font-semibold text-text-primary mb-3">Owner Contact</h2>
+                  {ownerInfo ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                        {ownerInfo.profile_image ? (
+                          <img
+                            src={ownerInfo.profile_image}
+                            alt=""
+                            className="w-8 h-8 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <User className="w-4 h-4 text-primary" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-xs text-text-secondary">Name</p>
+                          <p className="text-sm font-medium text-text-primary">{ownerInfo.full_name}</p>
+                        </div>
+                      </div>
+                      {ownerInfo.phone_number && (
+                        <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                          <Phone className="w-4 h-4 text-primary shrink-0" />
+                          <div>
+                            <p className="text-xs text-text-secondary">Phone</p>
+                            <p className="text-sm font-medium text-text-primary">{ownerInfo.phone_number}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                        <Mail className="w-4 h-4 text-primary shrink-0" />
+                        <div>
+                          <p className="text-xs text-text-secondary">Email</p>
+                          <p className="text-sm font-medium text-text-primary">{ownerInfo.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-background rounded-lg">
+                        <div>
+                          <p className="text-xs text-text-secondary">Total listings</p>
+                          <p className="text-sm font-medium text-text-primary">{ownerInfo.listings_count}</p>
+                        </div>
+                        <span className={clsx(
+                          "text-xs px-2 py-1 rounded-full font-medium",
+                          ownerInfo.is_active ? "bg-success/10 text-success" : "bg-error/10 text-error"
+                        )}>
+                          {ownerInfo.is_active ? "Active" : "Inactive"}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
-                      <Phone className="w-4 h-4 text-primary" />
-                      <div>
-                        <p className="text-xs text-text-secondary">Phone</p>
-                        <p className="text-sm font-medium text-text-primary">+234 801 234 5678</p>
-                      </div>
+                  ) : (
+                    <div className="space-y-3 animate-pulse">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="h-12 bg-background rounded-lg" />
+                      ))}
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
-                      <Mail className="w-4 h-4 text-primary" />
-                      <div>
-                        <p className="text-xs text-text-secondary">Email</p>
-                        <p className="text-sm font-medium text-text-primary">owner@email.com</p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -787,7 +887,7 @@ export default function PropertyDetailPage() {
                 </div>
               ) : (
                 property.ownership_documents.map((doc, i) => (
-                  <DocumentCard key={i} doc={doc} />
+                  <DocumentCard key={i} doc={doc} propertyId={property.id} />
                 ))
               )}
             </div>

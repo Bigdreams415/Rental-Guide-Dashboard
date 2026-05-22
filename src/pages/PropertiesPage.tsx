@@ -296,9 +296,16 @@ export default function PropertiesPage({ filterStatus, title, subtitle, showSear
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = filterStatus === "pending_verification"
-        ? await propertiesApi.listPending(0, 100)
-        : await propertiesApi.list({ limit: 100 });
+      let data: Property[];
+      if (filterStatus === "pending_verification") {
+        data = await propertiesApi.listPending(0, 100);
+      } else if (filterStatus) {
+        // Pass verification_status to the backend so rejected/verified tabs
+        // actually return the right rows (not just from the public verified list)
+        data = await propertiesApi.list({ limit: 100, verification_status: filterStatus });
+      } else {
+        data = await propertiesApi.list({ limit: 100 });
+      }
       setProperties(data);
     } catch (error) {
       toast.error("Failed to load properties");
@@ -312,11 +319,6 @@ export default function PropertiesPage({ filterStatus, title, subtitle, showSear
   // Apply filters and search
   useEffect(() => {
     let filtered = [...properties];
-
-    // Apply status filter
-    if (filterStatus) {
-      filtered = filtered.filter(p => p.verification_status === filterStatus);
-    }
 
     // Apply search
     if (search) {

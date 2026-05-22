@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Property, PropertyFilters, AuthToken, LoginCredentials } from "../types/property";
+import type { Property, PropertyFilters, AuthToken, LoginCredentials, AdminUser } from "../types/property";
 import type { Ticket, TicketListResponse } from "../types/ticket";
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
@@ -82,6 +82,22 @@ export const propertiesApi = {
       notes,
     });
     return data;
+  },
+};
+
+// ─── Admin Users ─────────────────────────────────────────────────────────────
+
+export const adminApi = {
+  getUser: async (userId: string): Promise<AdminUser> => {
+    const { data } = await api.get<AdminUser>(`/admin/users/${userId}`);
+    return data;
+  },
+
+  // Returns a full URL to stream an ownership document (auth is auto-attached by axios)
+  documentUrl: (propertyId: string, relativePath: string): string => {
+    const base = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+    const filename = relativePath.split("/").pop() ?? relativePath;
+    return `${base}/properties/${propertyId}/documents/${filename}`;
   },
 };
 

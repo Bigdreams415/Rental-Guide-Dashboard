@@ -1,4 +1,4 @@
-// ─── Enums (mirror backend exactly) ──────────────────────────────────────────
+//  Enums 
 
 export type PropertyType =
   | "house" | "land" | "commercial" | "shop"
@@ -7,12 +7,12 @@ export type PropertyType =
 export type ListingType = "rent" | "sale" | "lease" | "shortlet";
 
 export type PropertyStatus =
-  | "available" | "rented" | "sold" | "pending" | "unavailable";
+  | "available" | "rented" | "sold" | "pending" | "unavailable" | "draft";
 
 export type VerificationStatus =
   | "pending_verification" | "verified" | "rejected";
 
-// ─── Sub-models ───────────────────────────────────────────────────────────────
+// Sub-models 
 
 export interface PropertyImage {
   id: string;
@@ -38,10 +38,11 @@ export interface PropertyVideo {
 // Ownership document — keys vary per document type
 export interface OwnershipDocument {
   document_type: string;
-  [key: string]: string; // dynamic fields: co_number, plot_number, etc.
+  file_urls?: string[]; // uploaded scan/photo files (relative paths served by the API)
+  [key: string]: string | string[] | undefined; // dynamic fields: co_number, plot_number, etc.
 }
 
-// ─── Main Property ────────────────────────────────────────────────────────────
+// Main Property 
 
 export interface Property {
   id: string;
@@ -91,7 +92,7 @@ export interface Property {
   updated_at: string | null;
 }
 
-// ─── API Pagination / List ────────────────────────────────────────────────────
+// API Pagination / List \
 
 export interface PaginatedProperties {
   items: Property[];
@@ -100,7 +101,7 @@ export interface PaginatedProperties {
   limit: number;
 }
 
-// ─── Filter params for the list page ─────────────────────────────────────────
+// Filter params for the list page 
 
 export interface PropertyFilters {
   search?: string;
@@ -113,7 +114,7 @@ export interface PropertyFilters {
   limit?: number;
 }
 
-// ─── Stats (derived on frontend from list data) ───────────────────────────────
+// Stats (derived on frontend from list data) 
 
 export interface DashboardStats {
   total: number;
@@ -122,7 +123,21 @@ export interface DashboardStats {
   rejected: number;
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
+// Admin User (slim profile for property reviewer) 
+
+export interface AdminUser {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number: string | null;
+  profile_image: string | null;
+  verification_level: string;
+  is_active: boolean;
+  created_at: string;
+  listings_count: number;
+}
+
+// Auth
 
 export interface LoginCredentials {
   email: string;
