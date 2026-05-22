@@ -55,44 +55,7 @@ export default function App() {
         >
           <Route index element={<DashboardPage />} />
 
-          <Route
-            path="properties"
-            element={<PropertiesPage title="All Properties" subtitle="Every listing on the platform" showSearch />}
-          />
-
-          <Route
-            path="pending"
-            element={
-              <PropertiesPage
-                filterStatus="pending_verification"
-                title="Pending Review"
-                subtitle="Listings awaiting verification"
-                showSearch
-              />
-            }
-          />
-          <Route
-            path="verified"
-            element={
-              <PropertiesPage
-                filterStatus="verified"
-                title="Verified Listings"
-                subtitle="Live properties on the platform"
-                showSearch
-              />
-            }
-          />
-          <Route
-            path="rejected"
-            element={
-              <PropertiesPage
-                filterStatus="rejected"
-                title="Rejected Listings"
-                subtitle="Properties that did not pass verification"
-                showSearch
-              />
-            }
-          />
+          <Route path="properties" element={<PropertiesPage />} />
 
           <Route path="properties/:id" element={<PropertyDetailPage />} />
 

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Building2, ClockIcon,
-  CheckCircle, XCircle, LogOut, ShieldCheck,
+  LayoutDashboard, Building2,
+  XCircle, LogOut, ShieldCheck,
   ChevronLeft, ChevronRight, Settings, HelpCircle, LifeBuoy, UserCheck
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -9,10 +9,7 @@ import { useState } from "react";
 
 const links = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/properties", icon: Building2, label: "All Properties" },
-  { to: "/pending", icon: ClockIcon, label: "Pending Review" },
-  { to: "/verified", icon: CheckCircle, label: "Verified" },
-  { to: "/rejected", icon: XCircle, label: "Rejected" },
+  { to: "/properties", icon: Building2, label: "Properties" },
   { to: "/identities", icon: UserCheck, label: "ID Verification" },
   { to: "/tickets", icon: LifeBuoy, label: "Support Tickets" },
 ];

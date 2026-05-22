@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Search, Building2, Eye, Filter,
+  Building2, Eye, Filter,
   MapPin, Calendar, MoreVertical,
-  Grid, List, RefreshCw, Download
+  Grid, List, RefreshCw, Download,
+  ClockIcon, CheckCircle, XCircle
 } from "lucide-react";
 import { TopBar } from "../components/layout/TopBar";
 import { Badge, verificationBadge, statusBadge } from "../components/ui/Badge";
@@ -14,12 +15,21 @@ import { formatDistanceToNow } from "date-fns";
 import { clsx } from "clsx";
 import toast from "react-hot-toast";
 
-interface PropertiesPageProps {
-  filterStatus?: VerificationStatus;
-  title: string;
-  subtitle: string;
-  showSearch?: boolean;
-}
+type TabId = 'all' | 'pending' | 'verified' | 'rejected';
+
+const TABS: { id: TabId; label: string; icon: React.ElementType; filterStatus?: VerificationStatus }[] = [
+  { id: 'all', label: 'All', icon: Building2 },
+  { id: 'pending', label: 'Pending Review', icon: ClockIcon, filterStatus: 'pending_verification' },
+  { id: 'verified', label: 'Verified', icon: CheckCircle, filterStatus: 'verified' },
+  { id: 'rejected', label: 'Rejected', icon: XCircle, filterStatus: 'rejected' },
+];
+
+const TAB_SUBTITLE: Record<TabId, string> = {
+  all: 'Every listing on the platform',
+  pending: 'Listings awaiting verification',
+  verified: 'Live properties on the platform',
+  rejected: 'Properties that did not pass verification',
+};
 
 const TYPE_LABELS: Record<string, string> = {
   house: "House",
@@ -280,8 +290,9 @@ function FilterBar({
   );
 }
 
-export default function PropertiesPage({ filterStatus, title, subtitle, showSearch }: PropertiesPageProps) {
+export default function PropertiesPage() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabId>('all');
   const [properties, setProperties] = useState<Property[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [search, setSearch] = useState("");
@@ -293,6 +304,8 @@ export default function PropertiesPage({ filterStatus, title, subtitle, showSear
     priceRange: priceRanges[0],
   });
 
+  const filterStatus = TABS.find(t => t.id === activeTab)?.filterStatus;
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -300,8 +313,6 @@ export default function PropertiesPage({ filterStatus, title, subtitle, showSear
       if (filterStatus === "pending_verification") {
         data = await propertiesApi.listPending(0, 100);
       } else if (filterStatus) {
-        // Pass verification_status to the backend so rejected/verified tabs
-        // actually return the right rows (not just from the public verified list)
         data = await propertiesApi.list({ limit: 100, verification_status: filterStatus });
       } else {
         data = await propertiesApi.list({ limit: 100 });
@@ -315,6 +326,12 @@ export default function PropertiesPage({ filterStatus, title, subtitle, showSear
   }, [filterStatus]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Reset search/filters when switching tabs
+  useEffect(() => {
+    setSearch("");
+    setFilters({ type: 'All', listing: 'All', priceRange: priceRanges[0] });
+  }, [activeTab]);
 
   // Apply filters and search
   useEffect(() => {
@@ -371,7 +388,31 @@ export default function PropertiesPage({ filterStatus, title, subtitle, showSear
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <TopBar title={title} subtitle={subtitle} showSearch={showSearch} />
+      <TopBar title="Properties" subtitle={TAB_SUBTITLE[activeTab]} showSearch />
+
+      {/* Status tabs */}
+      <div className="px-6 bg-surface border-b border-grey-light/50">
+        <div className="flex items-center gap-1">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all relative whitespace-nowrap",
+                activeTab === id
+                  ? "text-primary"
+                  : "text-text-secondary hover:text-text-primary"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              {label}
+              {activeTab === id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <main className="flex-1 overflow-y-auto p-6">
         {/* Toolbar */}
@@ -425,18 +466,6 @@ export default function PropertiesPage({ filterStatus, title, subtitle, showSear
           </div>
         </div>
 
-        {/* Search bar (if not in TopBar) */}
-        {!showSearch && (
-          <div className="relative max-w-md mb-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-grey" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search properties..."
-              className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-grey-light/50 bg-surface focus:outline-none focus:border-primary/50 focus:shadow-sm transition-all placeholder-grey"
-            />
-          </div>
-        )}
 
         {/* Properties grid/list */}
         {loading ? (
