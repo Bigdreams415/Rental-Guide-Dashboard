@@ -3,18 +3,26 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, CheckCircle, XCircle, User,
   Phone, Mail, Shield, FileText, Camera,
-  AlertCircle, ExternalLink,
+  AlertCircle, Maximize2,
 } from "lucide-react";
 import { TopBar } from "../components/layout/TopBar";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
-import { identitiesApi } from "../api/client";
+import api, { identitiesApi } from "../api/client";
 import type { IdentityReviewItem, IdentityStatus } from "../types/identity";
 import { format } from "date-fns";
 import { clsx } from "clsx";
 import toast from "react-hot-toast";
 
-// Action Modal 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isImageFile(relativePath: string | null): boolean {
+  if (!relativePath) return false;
+  const ext = relativePath.split(".").pop()?.toLowerCase() ?? "";
+  return ["jpg", "jpeg", "png", "webp"].includes(ext);
+}
+
+// ─── Action Modal ─────────────────────────────────────────────────────────────
 
 function ActionModal({
   action, onConfirm, onCancel, loading,
@@ -113,7 +121,7 @@ function ActionModal({
   );
 }
 
-// Status badge helper 
+// ─── Status badge helper ──────────────────────────────────────────────────────
 
 function identityBadge(status: IdentityStatus) {
   switch (status) {
@@ -124,7 +132,77 @@ function identityBadge(status: IdentityStatus) {
   }
 }
 
-// Page
+// ─── Inline document preview ──────────────────────────────────────────────────
+
+function DocPreview({
+  label,
+  icon,
+  relativePath,
+  blobUrl,
+  loading,
+  error,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  relativePath: string | null;
+  blobUrl: string | null;
+  loading: boolean;
+  error: boolean;
+}) {
+  const isPdf = !isImageFile(relativePath);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          {icon}
+          <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{label}</span>
+        </div>
+        {blobUrl && (
+          <button
+            onClick={() => window.open(blobUrl, "_blank")}
+            title="Open fullscreen"
+            className="flex items-center gap-1 text-xs text-text-secondary hover:text-primary transition-colors"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+            <span>Fullscreen</span>
+          </button>
+        )}
+      </div>
+
+      {!relativePath ? (
+        <div className="w-full h-36 rounded-xl bg-grey-light/10 border border-grey-light/20 flex items-center justify-center">
+          <p className="text-sm text-text-secondary italic">Not provided</p>
+        </div>
+      ) : loading ? (
+        <div className="w-full h-56 rounded-xl bg-grey-light/20 animate-pulse flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      ) : error ? (
+        <div className="w-full h-56 rounded-xl bg-error/5 border border-error/20 flex flex-col items-center justify-center gap-2">
+          <XCircle className="w-6 h-6 text-error/50" />
+          <p className="text-xs text-text-secondary">Failed to load</p>
+        </div>
+      ) : blobUrl ? (
+        isPdf ? (
+          <iframe
+            src={blobUrl}
+            title={label}
+            className="w-full h-96 rounded-xl border border-grey-light/30"
+          />
+        ) : (
+          <img
+            src={blobUrl}
+            alt={label}
+            className="w-full max-h-80 object-contain rounded-xl border border-grey-light/30 bg-grey-light/10"
+          />
+        )
+      ) : null}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function IdentityDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -135,6 +213,13 @@ export default function IdentityDetailPage() {
   const [actionModal, setActionModal] = useState<"approve" | "reject" | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [docBlobUrl, setDocBlobUrl] = useState<string | null>(null);
+  const [selfieBlobUrl, setSelfieBlobUrl] = useState<string | null>(null);
+  const [docFetchLoading, setDocFetchLoading] = useState(false);
+  const [selfieFetchLoading, setSelfieFetchLoading] = useState(false);
+  const [docError, setDocError] = useState(false);
+  const [selfieError, setSelfieError] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     identitiesApi.get(id)
@@ -142,6 +227,60 @@ export default function IdentityDetailPage() {
       .catch(() => toast.error("Failed to load submission."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Fetch document blobs (auth via axios interceptor) once item is loaded
+  useEffect(() => {
+    if (!item) return;
+
+    let isMounted = true;
+    let docBlob: string | null = null;
+    let selfieBlob: string | null = null;
+
+    const fetchDoc = async () => {
+      if (!item.identity_document_url) return;
+      setDocFetchLoading(true);
+      setDocError(false);
+      try {
+        const url = identitiesApi.documentUrl(item.id, item.identity_document_url);
+        const { data } = await api.get<Blob>(url, { responseType: "blob" });
+        const blob = URL.createObjectURL(data);
+        if (!isMounted) { URL.revokeObjectURL(blob); return; }
+        docBlob = blob;
+        setDocBlobUrl(blob);
+      } catch {
+        if (isMounted) setDocError(true);
+      } finally {
+        if (isMounted) setDocFetchLoading(false);
+      }
+    };
+
+    const fetchSelfie = async () => {
+      if (!item.identity_selfie_url) return;
+      setSelfieFetchLoading(true);
+      setSelfieError(false);
+      try {
+        const url = identitiesApi.selfieUrl(item.id, item.identity_selfie_url);
+        const { data } = await api.get<Blob>(url, { responseType: "blob" });
+        const blob = URL.createObjectURL(data);
+        if (!isMounted) { URL.revokeObjectURL(blob); return; }
+        selfieBlob = blob;
+        setSelfieBlobUrl(blob);
+      } catch {
+        if (isMounted) setSelfieError(true);
+      } finally {
+        if (isMounted) setSelfieFetchLoading(false);
+      }
+    };
+
+    fetchDoc();
+    fetchSelfie();
+
+    return () => {
+      isMounted = false;
+      if (docBlob) URL.revokeObjectURL(docBlob);
+      if (selfieBlob) URL.revokeObjectURL(selfieBlob);
+    };
+  }, [item?.id]);
 
   const handleAction = async (notes: string) => {
     if (!item || !actionModal) return;
@@ -191,18 +330,12 @@ export default function IdentityDetailPage() {
   }
 
   const isPending = item.identity_status === "pending";
-  const docUrl = item.identity_document_url
-    ? identitiesApi.documentUrl(item.id, item.identity_document_url)
-    : null;
-  const selfieUrl = item.identity_selfie_url
-    ? identitiesApi.selfieUrl(item.id, item.identity_selfie_url)
-    : null;
 
   return (
     <div className="flex flex-col h-full">
       <TopBar title="Identity Review" subtitle={item.full_name} />
 
-      <div className="flex-1 overflow-y-auto p-6 max-w-3xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto p-6 w-full">
         {/* Back + status row */}
         <div className="flex items-center justify-between mb-5">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
@@ -267,50 +400,28 @@ export default function IdentityDetailPage() {
           </div>
         </div>
 
-        {/* Documents */}
+        {/* Documents — inline preview */}
         <div className="bg-surface rounded-2xl p-5 border border-grey-light/30 mb-6">
-          <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-4">
+          <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-5">
             Uploaded Documents
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <FileText className="w-3.5 h-3.5 text-text-secondary" />
-                <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">ID Document</span>
-              </div>
-              {docUrl ? (
-                <a
-                  href={docUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl border border-grey-light/40 bg-background hover:border-primary/40 text-sm text-primary font-medium transition-all"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  View Document
-                </a>
-              ) : (
-                <p className="text-sm text-text-secondary italic">No document uploaded.</p>
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <Camera className="w-3.5 h-3.5 text-text-secondary" />
-                <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Selfie</span>
-              </div>
-              {selfieUrl ? (
-                <a
-                  href={selfieUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl border border-grey-light/40 bg-background hover:border-primary/40 text-sm text-primary font-medium transition-all"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  View Selfie
-                </a>
-              ) : (
-                <p className="text-sm text-text-secondary italic">No selfie provided.</p>
-              )}
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DocPreview
+              label="Selfie"
+              icon={<Camera className="w-3.5 h-3.5 text-text-secondary" />}
+              relativePath={item.identity_selfie_url}
+              blobUrl={selfieBlobUrl}
+              loading={selfieFetchLoading}
+              error={selfieError}
+            />
+            <DocPreview
+              label="ID Document"
+              icon={<FileText className="w-3.5 h-3.5 text-text-secondary" />}
+              relativePath={item.identity_document_url}
+              blobUrl={docBlobUrl}
+              loading={docFetchLoading}
+              error={docError}
+            />
           </div>
         </div>
 
@@ -341,7 +452,7 @@ export default function IdentityDetailPage() {
   );
 }
 
-// Small helper component 
+// ─── InfoRow helper ───────────────────────────────────────────────────────────
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (

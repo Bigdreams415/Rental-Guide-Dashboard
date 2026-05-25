@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Building2, Eye, Filter,
   MapPin, Calendar, MoreVertical,
-  Grid, List, RefreshCw, Download,
+  Grid, List, RefreshCw,
   ClockIcon, CheckCircle, XCircle
 } from "lucide-react";
 import { TopBar } from "../components/layout/TopBar";
@@ -298,11 +298,19 @@ export default function PropertiesPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [filters, setFilters] = useState({
     type: 'All',
     listing: 'All',
     priceRange: priceRanges[0],
   });
+
+  // Fetch pending count once on mount so the tab badge is always visible
+  useEffect(() => {
+    propertiesApi.listPending(0, 100)
+      .then(data => setPendingCount(data.length))
+      .catch(() => {});
+  }, []);
 
   const filterStatus = TABS.find(t => t.id === activeTab)?.filterStatus;
 
@@ -312,6 +320,7 @@ export default function PropertiesPage() {
       let data: Property[];
       if (filterStatus === "pending_verification") {
         data = await propertiesApi.listPending(0, 100);
+        setPendingCount(data.length);
       } else if (filterStatus) {
         data = await propertiesApi.list({ limit: 100, verification_status: filterStatus });
       } else {
@@ -377,10 +386,6 @@ export default function PropertiesPage() {
     setFilteredProperties(filtered);
   }, [properties, search, filters, filterStatus]);
 
-  const handleExport = () => {
-    toast.success("Export started. You'll be notified when it's ready.");
-  };
-
   const handleRefresh = () => {
     load();
     toast.success("Properties refreshed");
@@ -406,6 +411,11 @@ export default function PropertiesPage() {
             >
               <Icon className="w-3.5 h-3.5 shrink-0" />
               {label}
+              {id === 'pending' && pendingCount !== null && pendingCount > 0 && (
+                <span className="min-w-[20px] h-5 flex items-center justify-center bg-warning text-white text-[10px] font-bold px-1.5 rounded-full">
+                  {pendingCount > 99 ? "99+" : pendingCount}
+                </span>
+              )}
               {activeTab === id && (
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
               )}
@@ -454,14 +464,6 @@ export default function PropertiesPage() {
               onClick={handleRefresh}
             >
               Refresh
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={<Download className="w-4 h-4" />}
-              onClick={handleExport}
-            >
-              Export
             </Button>
           </div>
         </div>

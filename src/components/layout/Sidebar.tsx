@@ -5,7 +5,8 @@ import {
   ChevronLeft, ChevronRight, Settings, HelpCircle, LifeBuoy, UserCheck
 } from "lucide-react";
 import { clsx } from "clsx";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { propertiesApi } from "../../api/client";
 
 const links = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -27,7 +28,14 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle, isMobile = false }: SidebarProps) {
   const navigate = useNavigate();
-  const [hovered, setHovered] = useState(false); // used only for shadow effect
+  const [hovered, setHovered] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    propertiesApi.listPending(0, 100)
+      .then(data => setPendingCount(data.length))
+      .catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("admin_token");
@@ -98,36 +106,51 @@ export function Sidebar({ collapsed, onToggle, isMobile = false }: SidebarProps)
             Menu
           </p>
         )}
-        {links.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
-            className={({ isActive }) =>
-              clsx(
-                "sidebar-link relative group",
-                isActive && "active",
-                collapsed && 'justify-center px-0'
-              )
-            }
-            title={collapsed ? label : undefined}
-          >
-            {({ isActive }) => (
-              <>
-                <Icon className={clsx(
-                  "w-4 h-4 shrink-0 transition-transform group-hover:scale-110",
-                  isActive && 'text-primary'
-                )} />
-                {(showExpanded) && (
-                  <span className="animate-slide-in">{label}</span>
-                )}
-                {!showExpanded && isActive && (
-                  <span className="absolute left-0 w-1 h-6 bg-primary rounded-r-full" />
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
+        {links.map(({ to, icon: Icon, label }) => {
+          const isProperties = label === "Properties";
+          const showBadge = isProperties && pendingCount > 0;
+          const badgeLabel = pendingCount > 99 ? "99+" : String(pendingCount);
+
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === "/"}
+              className={({ isActive }) =>
+                clsx(
+                  "sidebar-link relative group",
+                  isActive && "active",
+                  collapsed && 'justify-center px-0'
+                )
+              }
+              title={collapsed ? label : undefined}
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon className={clsx(
+                    "w-4 h-4 shrink-0 transition-transform group-hover:scale-110",
+                    isActive && 'text-primary'
+                  )} />
+                  {showExpanded && (
+                    <span className="animate-slide-in">{label}</span>
+                  )}
+                  {!showExpanded && isActive && (
+                    <span className="absolute left-0 w-1 h-6 bg-primary rounded-r-full" />
+                  )}
+                  {/* Badge — expanded: pill with count; collapsed: dot */}
+                  {showBadge && showExpanded && (
+                    <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center bg-warning text-white text-[10px] font-bold px-1.5 rounded-full animate-slide-in">
+                      {badgeLabel}
+                    </span>
+                  )}
+                  {showBadge && !showExpanded && (
+                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-warning rounded-full ring-2 ring-surface" />
+                  )}
+                </>
+              )}
+            </NavLink>
+          );
+        })}
 
         {/* Bottom links - hidden on mobile to save space */}
         {!isMobile && (
