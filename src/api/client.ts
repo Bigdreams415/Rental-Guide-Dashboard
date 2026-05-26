@@ -2,6 +2,7 @@ import axios from "axios";
 import type { Property, PropertyFilters, AuthToken, LoginCredentials, AdminUser } from "../types/property";
 import type { Ticket, TicketListResponse } from "../types/ticket";
 import type { IdentityReviewItem } from "../types/identity";
+import type { Transaction, TransactionListResponse, TransactionStatus } from "../types/transaction";
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 
@@ -160,6 +161,35 @@ export const ticketsApi = {
   },
   update: async (id: string, body: { status?: string; admin_reply?: string }): Promise<Ticket> => {
     const { data } = await api.patch<Ticket>(`/admin/support/tickets/${id}`, body);
+    return data;
+  },
+};
+
+// ─── Payments (Admin) ────────────────────────────────────────────────────────
+
+export const paymentsApi = {
+  list: async (params: { status?: TransactionStatus; skip?: number; limit?: number } = {}): Promise<TransactionListResponse> => {
+    const { data } = await api.get<TransactionListResponse>("/admin/payments/", { params });
+    return data;
+  },
+
+  get: async (id: string): Promise<Transaction> => {
+    const { data } = await api.get<Transaction>(`/admin/payments/${id}`);
+    return data;
+  },
+
+  release: async (id: string): Promise<Transaction> => {
+    const { data } = await api.post<Transaction>(`/payments/${id}/release`);
+    return data;
+  },
+
+  refund: async (id: string): Promise<Transaction> => {
+    const { data } = await api.post<Transaction>(`/payments/${id}/refund`);
+    return data;
+  },
+
+  retryPayout: async (id: string): Promise<Transaction> => {
+    const { data } = await api.post<Transaction>(`/admin/payments/${id}/retry-payout`);
     return data;
   },
 };

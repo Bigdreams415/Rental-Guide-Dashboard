@@ -2,16 +2,17 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2,
   XCircle, LogOut, ShieldCheck,
-  ChevronLeft, ChevronRight, Settings, HelpCircle, LifeBuoy, UserCheck
+  ChevronLeft, ChevronRight, Settings, HelpCircle, LifeBuoy, UserCheck, CreditCard
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
-import { propertiesApi } from "../../api/client";
+import { propertiesApi, paymentsApi } from "../../api/client";
 
 const links = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/properties", icon: Building2, label: "Properties" },
   { to: "/identities", icon: UserCheck, label: "ID Verification" },
+  { to: "/payments", icon: CreditCard, label: "Payments" },
   { to: "/tickets", icon: LifeBuoy, label: "Support Tickets" },
 ];
 
@@ -30,10 +31,17 @@ export function Sidebar({ collapsed, onToggle, isMobile = false }: SidebarProps)
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [escrowCount, setEscrowCount] = useState(0);
 
   useEffect(() => {
     propertiesApi.listPending(0, 100)
       .then(data => setPendingCount(data.length))
+      .catch(() => {});
+    paymentsApi.list({ status: "released", limit: 100 })
+      .then(data => {
+        const failed = data.items.filter(t => t.payout_status === "failed").length;
+        setEscrowCount(failed);
+      })
       .catch(() => {});
   }, []);
 
@@ -108,8 +116,10 @@ export function Sidebar({ collapsed, onToggle, isMobile = false }: SidebarProps)
         )}
         {links.map(({ to, icon: Icon, label }) => {
           const isProperties = label === "Properties";
-          const showBadge = isProperties && pendingCount > 0;
-          const badgeLabel = pendingCount > 99 ? "99+" : String(pendingCount);
+          const isPayments = label === "Payments";
+          const count = isProperties ? pendingCount : isPayments ? escrowCount : 0;
+          const showBadge = count > 0;
+          const badgeLabel = count > 99 ? "99+" : String(count);
 
           return (
             <NavLink

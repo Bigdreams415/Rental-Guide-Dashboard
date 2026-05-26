@@ -141,3 +141,14 @@ export function ticketStatusBadge(status: string): { variant: BadgeVariant; labe
   };
   return map[status] ?? { variant: "neutral", label: status };
 }
+
+export function transactionStatusBadge(status: string): { variant: BadgeVariant; label: string } {
+  const map: Record<string, { variant: BadgeVariant; label: string }> = {
+    pending:    { variant: "pending",  label: "Pending" },
+    in_escrow:  { variant: "warning",  label: "In Escrow" },
+    released:   { variant: "success",  label: "Released" },
+    refunded:   { variant: "info",     label: "Refunded" },
+    failed:     { variant: "error",    label: "Failed" },
+  };
+  return map[status] ?? { variant: "neutral", label: status };
+}
